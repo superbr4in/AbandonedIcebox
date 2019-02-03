@@ -5,31 +5,31 @@
 
 #include "cs_adapter.hpp"
 
-#define HANDLE_CS_ERROR(cs_call)                            \
-{                                                           \
-    cs_err const error_code = cs_call;                      \
-    if (error_code != CS_ERR_OK)                            \
-    {                                                       \
-        std::ostringstream message;                         \
-        message << cs_strerror(error_code)                  \
-            << std::endl << #cs_call                        \
-            << std::endl << __FILE__ << ':' << __LINE__;    \
-                                                            \
-        throw std::runtime_error(message.str());            \
-    }                                                       \
+#define HANDLE_CS_ERROR(cs_call)                                                                                               \
+{                                                                                                                              \
+    cs_err const cs_error = cs_call;                                                                                           \
+    if (cs_error != CS_ERR_OK)                                                                                                 \
+    {                                                                                                                          \
+        std::ostringstream message;                                                                                            \
+        message          << __FILE__ << ':' << __LINE__ << ':'                                                                 \
+            << std::endl << #cs_call                                                                                           \
+            << std::endl << cs_strerror(cs_error);                                                                             \
+                                                                                                                               \
+        throw std::runtime_error(message.str());                                                                               \
+    }                                                                                                                          \
 }
 
-disassembler::disassembler(instruction_set_architecture const architecture)
+disassembler::disassembler(architecture const architecture)
 {
     cs_arch cs_architecture;
     cs_mode cs_mode;
     switch (architecture)
     {
-    case instruction_set_architecture::x86_32:
+    case architecture::x86_32:
         cs_architecture = CS_ARCH_X86;
         cs_mode = CS_MODE_32;
         break;
-    case instruction_set_architecture::x86_64:
+    case architecture::x86_64:
         cs_architecture = CS_ARCH_X86;
         cs_mode = CS_MODE_64;
         break;
@@ -51,6 +51,9 @@ disassembler::disassembler(instruction_set_architecture const architecture)
 
 instruction disassembler::operator()(std::basic_string_view<std::byte>* const code, std::uint_fast64_t* const address) const
 {
+    if (code->empty())
+        throw std::invalid_argument("The code range cannot be empty.");
+
     auto const cs_handle =
         reinterpret_cast<csh>(handle_.get()); // NOLINT [cppcoreguidelines-pro-type-reinterpret-cast]
 
@@ -70,14 +73,22 @@ instruction disassembler::operator()(std::basic_string_view<std::byte>* const co
         HANDLE_CS_ERROR(
             cs_errno(cs_handle));
 
-        instruction.address = ref_address;
-        instruction.code = { *ref_code.data() };
-
         *code = std::basic_string_view<std::byte>(
             ref_code.data() + 1, // NOLINT [cppcoreguidelines-pro-bounds-pointer-arithmetic]
             ref_code.size() - 1);
         *address = ref_address + 1;
+
+        instruction.address = ref_address;
+        instruction.code = { *ref_code.data() };
     }
 
     return instruction;
 }
+
+static_assert(std::is_destructible_v<disassembler>);
+
+static_assert(std::is_move_constructible_v<disassembler>);
+static_assert(std::is_move_assignable_v<disassembler>);
+
+static_assert(std::is_copy_constructible_v<disassembler>);
+static_assert(std::is_copy_assignable_v<disassembler>);

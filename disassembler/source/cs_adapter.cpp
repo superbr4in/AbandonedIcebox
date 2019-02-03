@@ -1,13 +1,13 @@
 #include "cs_adapter.hpp"
 
-void cs::instruction_deleter::operator()(cs_insn* const instruction) const
+void cs::free::operator()(cs_insn* const instruction) const
 {
     cs_free(instruction, 1);
 };
 
-std::unique_ptr<cs_insn, cs::instruction_deleter> cs::malloc(csh const handle)
+std::unique_ptr<cs_insn, cs::free> cs::malloc(csh const handle)
 {
-    return std::unique_ptr<cs_insn, instruction_deleter>(cs_malloc(handle));
+    return std::unique_ptr<cs_insn, free>(cs_malloc(handle));
 }
 
 bool cs::disasm_iter(csh const handle, std::basic_string_view<std::byte>* const code, std::uint_fast64_t* const address,
