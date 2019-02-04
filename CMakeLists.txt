@@ -18,9 +18,11 @@ set(CAPSTONE_TMS320C64X_SUPPORT OFF CACHE BOOL "Capstone: TMS320C64X support")
 set(CAPSTONE_XCORE_SUPPORT      OFF CACHE BOOL "Capstone: XCore support")
 
 add_subdirectory("capstone/")
+add_subdirectory("catch2/")
 
 target_include_directories(capstone-shared INTERFACE "capstone/include/")
 
 add_library(capstone ALIAS capstone-shared)
+add_library(catch2 ALIAS Catch2)
 
 add_subdirectory("disassembler/")
