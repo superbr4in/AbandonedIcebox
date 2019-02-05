@@ -49,37 +49,36 @@ disassembler::disassembler(architecture const architecture)
         });
 }
 
-instruction disassembler::operator()(std::basic_string_view<std::byte>* const code, std::uint_fast64_t* const address) const
+instruction disassembler::operator()(std::uint_fast64_t* const address, std::basic_string_view<std::byte>* const code) const
 {
     if (code->empty())
-        throw std::invalid_argument("The code range cannot be empty.");
+        throw std::invalid_argument("Empty code range");
 
     auto const cs_handle =
         reinterpret_cast<csh>(handle_.get()); // NOLINT [cppcoreguidelines-pro-type-reinterpret-cast]
 
-    auto const ref_code = *code;
-    auto const ref_address = *address;
+    instruction instruction
+    {
+        *address,
+        *code
+    };
 
-    instruction instruction;
     if (auto const cs_instruction = cs::malloc(cs_handle);
         cs::disasm_iter(cs_handle, code, address, cs_instruction.get()))
     {
-        instruction.address = cs_instruction->address;
-        instruction.code.resize(cs_instruction->size);
-        std::memcpy(instruction.code.data(), std::begin(cs_instruction->bytes), cs_instruction->size);
+        instruction.code.remove_suffix(instruction.code.size() - cs_instruction->size);
     }
     else
     {
         HANDLE_CS_ERROR(
             cs_errno(cs_handle));
 
+        *address = instruction.address + 1;
         *code = std::basic_string_view<std::byte>(
-            ref_code.data() + 1, // NOLINT [cppcoreguidelines-pro-bounds-pointer-arithmetic]
-            ref_code.size() - 1);
-        *address = ref_address + 1;
+            instruction.code.data() + 1, // NOLINT [cppcoreguidelines-pro-bounds-pointer-arithmetic]
+            instruction.code.size() - 1);
 
-        instruction.address = ref_address;
-        instruction.code = { *ref_code.data() };
+        instruction.code.remove_suffix(instruction.code.size() - 1);
     }
 
     return instruction;

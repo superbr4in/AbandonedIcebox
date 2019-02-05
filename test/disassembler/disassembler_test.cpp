@@ -9,8 +9,8 @@ std::byte operator""_b(unsigned long long value) // NOLINT [google-runtime-int]
 TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) const")
 {
     architecture architecture;
-    std::vector<std::byte> bytes;
     std::uint_fast64_t start_address;
+    std::vector<std::byte> bytes;
     std::vector<instruction> instructions;
 
     SECTION("x86")
@@ -22,6 +22,7 @@ TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) c
 
         SECTION("Arbitrary instructions")
         {
+            start_address = 0x00;
             bytes =
             {
                 0x90_b,                                 // nop
@@ -31,65 +32,65 @@ TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) c
                 0xCC_b,                                 // int3
                 0x83_b, 0xC3_b, 0x00_b,                 // add ebx, 0x00
             };
-            start_address = 0x00;
             instructions =
             {
-                { 0x00, { 0x90_b } },
-                { 0x01, { 0x87_b, 0xC0_b } },
-                { 0x03, { 0xE9_b, 0xFB_b, 0xFF_b, 0xFF_b, 0xFF_b } },
-                { 0x08, { 0xFF_b, 0xC3_b } },
-                { 0x0A, { 0xCC_b } },
-                { 0x0B, { 0x83_b, 0xC3_b, 0x00_b } },
+                { 0x00, { &bytes.at( 0), 1 } },
+                { 0x01, { &bytes.at( 1), 2 } },
+                { 0x03, { &bytes.at( 3), 5 } },
+                { 0x08, { &bytes.at( 8), 2 } },
+                { 0x0A, { &bytes.at(10), 1 } },
+                { 0x0B, { &bytes.at(11), 3 } }
             };
         }
         SECTION("Arbitrary start address")
         {
+            start_address = 0x17;
             bytes =
             {
                 0x90_b, // nop
                 0x90_b  // nop
             };
-            start_address = 0x17;
             instructions =
             {
-                { 0x17, { 0x90_b } },
-                { 0x18, { 0x90_b } }
+                { 0x17, { &bytes.at(0), 1 } },
+                { 0x18, { &bytes.at(1), 1 } }
             };
         }
         SECTION("Invalid instructions")
         {
+            start_address = 0x00;
             bytes =
             {
                 0xFF_b, // (bad)
                 0x7F_b  // .byte 0x7F
             };
-            start_address = 0x00;
             instructions =
             {
-                { 0x00, { 0xFF_b } },
-                { 0x01, { 0x7F_b } }
+                { 0x00, { &bytes.at(0), 1 } },
+                { 0x01, { &bytes.at(1), 1 } }
             };
         }
     }
 
     disassembler const disassembler(architecture);
 
-    std::basic_string_view<std::byte> next_code(bytes.data(), bytes.size());
     std::uint_fast64_t next_address = start_address;
+    std::basic_string_view<std::byte> next_code(bytes.data(), bytes.size());
     for (auto const& instruction : instructions)
     {
-        auto const [disassembled_address, disassembled_code] = disassembler(&next_code, &next_address);
+        auto const disassembled_instruction = disassembler(&next_address, &next_code);
 
-        CHECK(disassembled_address == instruction.address);
-        CHECK(disassembled_code == instruction.code);
+        CHECK(disassembled_instruction.address == instruction.address);
+        CHECK(disassembled_instruction.code.data() == instruction.code.data());
+        CHECK(disassembled_instruction.code.size() == instruction.code.size());
+
+        CHECK(next_address == instruction.address + instruction.code.size());
 
         auto const byte_pos = instruction.address - start_address;
 
         CHECK(next_code.data() ==
             &bytes.at(byte_pos) + instruction.code.size()); // NOLINT [cppcoreguidelines-pro-bounds-pointer-arithmetic]
         CHECK(next_code.size() == bytes.size() - byte_pos - instruction.code.size());
-
-        CHECK(next_address == instruction.address + instruction.code.size());
     }
 }
 
@@ -106,10 +107,10 @@ TEST_CASE("Exceptions")
     {
         SECTION("Empty code range")
         {
-            std::basic_string_view<std::byte> code(nullptr, 0);
             std::uint_fast64_t address = 0x00;
+            std::basic_string_view<std::byte> code(nullptr, 0);
 
-            CHECK_THROWS(disassembler(&code, &address));
+            CHECK_THROWS(disassembler(&address, &code));
         }
     }
 }

@@ -29,5 +29,5 @@ public:
      *  \exception std::invalid_argument The code range is empty.
      *  \returns A disassembled machine code instruction.
      */
-    instruction operator()(std::basic_string_view<std::byte>* code, std::uint_fast64_t* address) const;
+    instruction operator()(std::uint_fast64_t* address, std::basic_string_view<std::byte>* code) const;
 };

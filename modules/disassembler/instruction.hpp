@@ -1,7 +1,6 @@
 #pragma once
 
-#include <cstdint>
-#include <vector>
+#include <string_view>
 
 /*!
  *  Disassembled machine code instruction
@@ -10,7 +9,7 @@ struct instruction
 {
     std::uint_fast64_t address;
 
-    std::vector<std::byte> code;
+    std::basic_string_view<std::byte> code;
 
     // TODO jump/call/register/...
 };
