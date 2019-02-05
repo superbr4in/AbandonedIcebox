@@ -1,6 +1,4 @@
-#define CATCH_CONFIG_MAIN
 #include <catch2/catch.hpp>
-
 #include <disassembler/disassembler.hpp>
 
 std::byte operator""_b(unsigned long long value) // NOLINT [google-runtime-int]
