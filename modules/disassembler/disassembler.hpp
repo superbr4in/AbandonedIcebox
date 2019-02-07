@@ -25,6 +25,7 @@ public:
      *  \param [in,out] address The address of the machine code instruction. The updated value is the address past this
      *                          instruction.
      *  \exception std::invalid_argument The code range is empty.
+     *  \exception std::runtime_error    Encountered an invalid instruction.
      *  \returns A disassembled machine code instruction.
      */
     instruction operator()(std::uint_fast64_t* address, std::basic_string_view<std::byte>* code) const;

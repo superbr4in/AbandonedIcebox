@@ -70,31 +70,26 @@ instruction disassembler::operator()(std::uint_fast64_t* const address, std::bas
         reinterpret_cast<std::uint_fast8_t const*>(code->data()); // NOLINT [cppcoreguidelines-pro-type-reinterpret-cast]
     auto cs_size = code->size();
 
-    instruction instruction
-    {
-        .id = 0,
+    std::unique_ptr<cs_insn, cs_insn_deleter> const cs_instruction(cs_malloc(handle_->cs));
 
-        .address = *address,
-        .size = 1
-    };
-
-    if (std::unique_ptr<cs_insn, cs_insn_deleter> const cs_instruction(cs_malloc(handle_->cs));
-        cs_disasm_iter(handle_->cs, &cs_code, &cs_size, &cs_address, cs_instruction.get()))
-    {
-        instruction.id = cs_instruction->id;
-
-        instruction.size = cs_instruction->size;
-    }
+    if (!cs_disasm_iter(handle_->cs, &cs_code, &cs_size, &cs_address, cs_instruction.get()))
+        throw std::runtime_error("Invalid instruction");
 
     HANDLE_CS_ERROR(
         cs_errno(handle_->cs));
 
-    *address = instruction.address + instruction.size;
+    *address = cs_address;
     *code = std::basic_string_view<std::byte>(
-        code->data() + instruction.size, // NOLINT [cppcoreguidelines-pro-bounds-pointer-arithmetic]
-        code->size() - instruction.size);
+        reinterpret_cast<std::byte const*>(cs_code), // NOLINT [cppcoreguidelines-pro-type-reinterpret-cast]
+        cs_size);
 
-    return instruction;
+    return instruction
+    {
+        .id = cs_instruction->id,
+
+        .address = cs_instruction->address,
+        .size = cs_instruction->size
+    };
 }
 
 static_assert(std::is_destructible_v<disassembler>);

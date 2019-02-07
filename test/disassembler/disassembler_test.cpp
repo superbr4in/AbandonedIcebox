@@ -9,6 +9,7 @@ std::byte operator""_b(unsigned long long value) // NOLINT [google-runtime-int]
 TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) const")
 {
     instruction_set_architecture architecture;
+
     std::uint_fast64_t start_address;
     std::vector<std::byte> bytes;
     std::vector<instruction> instructions;
@@ -56,20 +57,6 @@ TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) c
                 { 494, 0x18, 1 }
             };
         }
-        SECTION("Invalid instructions")
-        {
-            start_address = 0x00;
-            bytes =
-            {
-                0xFF_b, // (bad)
-                0x7F_b  // .byte 0x7F
-            };
-            instructions =
-            {
-                { 0, 0x00, 1 },
-                { 0, 0x01, 1 }
-            };
-        }
     }
 
     disassembler const disassembler(architecture);
@@ -105,12 +92,32 @@ TEST_CASE("Exceptions")
 
     SECTION("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) const")
     {
+        std::vector<std::byte> bytes;
+
+        std::uint_fast64_t address;
+        std::basic_string_view<std::byte> code;
+
         SECTION("Empty code range")
         {
-            std::uint_fast64_t address = 0x00;
-            std::basic_string_view<std::byte> code(nullptr, 0);
-
-            CHECK_THROWS(disassembler(&address, &code));
+            address = 0x00;
+            code = std::basic_string_view<std::byte>(nullptr, 0);
         }
+
+        SECTION("Invalid instruction")
+        {
+            SECTION("(bad)")
+            {
+                bytes = { 0xFF_b };
+            }
+            SECTION(".byte 0x7F")
+            {
+                bytes = { 0x7F_b };
+            }
+
+            address = 0x00;
+            code = std::basic_string_view<std::byte>(bytes.data(), bytes.size());
+        }
+
+        CHECK_THROWS(disassembler(&address, &code));
     }
 }
