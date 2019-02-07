@@ -1,9 +1,7 @@
-#include <cstring>
 #include <sstream>
 
+#include <capstone/capstone.h>
 #include <disassembler/disassembler.hpp>
-
-#include "cs_adapter.hpp"
 
 #define HANDLE_CS_ERROR(cs_call)                                                                                               \
 {                                                                                                                              \
@@ -15,71 +13,86 @@
             << std::endl << #cs_call                                                                                           \
             << std::endl << cs_strerror(cs_error);                                                                             \
                                                                                                                                \
-        throw std::runtime_error(message.str());                                                                               \
+        throw std::logic_error(message.str());                                                                                 \
     }                                                                                                                          \
 }
 
-disassembler::disassembler(architecture const architecture)
+struct disassembler::handle
 {
-    cs_arch cs_architecture;
-    cs_mode cs_mode;
-    switch (architecture)
-    {
-    case architecture::x86_32:
-        cs_architecture = CS_ARCH_X86;
-        cs_mode = CS_MODE_32;
-        break;
-    case architecture::x86_64:
-        cs_architecture = CS_ARCH_X86;
-        cs_mode = CS_MODE_64;
-        break;
-    }
+    csh cs;
 
-    csh cs_handle;
-    HANDLE_CS_ERROR(
-        cs_open(cs_architecture, cs_mode, &cs_handle));
-    HANDLE_CS_ERROR(
-        cs_option(cs_handle, CS_OPT_DETAIL, CS_OPT_ON));
-    handle_ = std::shared_ptr<void const>(
-        reinterpret_cast<void const*>(cs_handle), // NOLINT [cppcoreguidelines-pro-type-reinterpret-cast]
-        [](void const* const handle)
+    explicit handle(instruction_set_architecture const architecture) :
+        cs()
+    {
+        cs_arch cs_architecture;
+        cs_mode cs_mode;
+        switch (architecture)
         {
-            csh cs_handle = reinterpret_cast<csh>(handle); // NOLINT [cppcoreguidelines-pro-type-reinterpret-cast]
-            cs_close(&cs_handle);
-        });
-}
+        case instruction_set_architecture::x86_32:
+            cs_architecture = CS_ARCH_X86;
+            cs_mode = CS_MODE_32;
+            break;
+        case instruction_set_architecture::x86_64:
+            cs_architecture = CS_ARCH_X86;
+            cs_mode = CS_MODE_64;
+            break;
+        }
+
+        HANDLE_CS_ERROR(
+            cs_open(cs_architecture, cs_mode, &cs));
+        HANDLE_CS_ERROR(
+            cs_option(cs, CS_OPT_DETAIL, CS_OPT_ON));
+    }
+    ~handle()
+    {
+        cs_close(&cs);
+    }
+};
+
+disassembler::disassembler(instruction_set_architecture const architecture) :
+    handle_(std::make_shared<handle>(architecture)) { }
 
 instruction disassembler::operator()(std::uint_fast64_t* const address, std::basic_string_view<std::byte>* const code) const
 {
+    struct cs_insn_deleter
+    {
+        void operator()(cs_insn* const cs_instruction)
+        {
+            cs_free(cs_instruction, 1);
+        }
+    };
+
     if (code->empty())
         throw std::invalid_argument("Empty code range");
 
-    auto const cs_handle =
-        reinterpret_cast<csh>(handle_.get()); // NOLINT [cppcoreguidelines-pro-type-reinterpret-cast]
+    auto cs_address = *address;
+    auto const* cs_code =
+        reinterpret_cast<std::uint_fast8_t const*>(code->data()); // NOLINT [cppcoreguidelines-pro-type-reinterpret-cast]
+    auto cs_size = code->size();
 
     instruction instruction
     {
-        *address,
-        *code
+        .id = 0,
+
+        .address = *address,
+        .size = 1
     };
 
-    if (auto const cs_instruction = cs::malloc(cs_handle);
-        cs::disasm_iter(cs_handle, code, address, cs_instruction.get()))
+    if (std::unique_ptr<cs_insn, cs_insn_deleter> const cs_instruction(cs_malloc(handle_->cs));
+        cs_disasm_iter(handle_->cs, &cs_code, &cs_size, &cs_address, cs_instruction.get()))
     {
-        instruction.code.remove_suffix(instruction.code.size() - cs_instruction->size);
-    }
-    else
-    {
-        HANDLE_CS_ERROR(
-            cs_errno(cs_handle));
+        instruction.id = cs_instruction->id;
 
-        *address = instruction.address + 1;
-        *code = std::basic_string_view<std::byte>(
-            instruction.code.data() + 1, // NOLINT [cppcoreguidelines-pro-bounds-pointer-arithmetic]
-            instruction.code.size() - 1);
-
-        instruction.code.remove_suffix(instruction.code.size() - 1);
+        instruction.size = cs_instruction->size;
     }
+
+    HANDLE_CS_ERROR(
+        cs_errno(handle_->cs));
+
+    *address = instruction.address + instruction.size;
+    *code = std::basic_string_view<std::byte>(
+        code->data() + instruction.size, // NOLINT [cppcoreguidelines-pro-bounds-pointer-arithmetic]
+        code->size() - instruction.size);
 
     return instruction;
 }

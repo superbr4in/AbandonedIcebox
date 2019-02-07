@@ -8,7 +8,7 @@ std::byte operator""_b(unsigned long long value) // NOLINT [google-runtime-int]
 
 TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) const")
 {
-    architecture architecture;
+    instruction_set_architecture architecture;
     std::uint_fast64_t start_address;
     std::vector<std::byte> bytes;
     std::vector<instruction> instructions;
@@ -17,8 +17,8 @@ TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) c
     {
         architecture =
             GENERATE( // NOLINT
-                architecture::x86_32,
-                architecture::x86_64);
+                instruction_set_architecture::x86_32,
+                instruction_set_architecture::x86_64);
 
         SECTION("Arbitrary instructions")
         {
@@ -34,12 +34,12 @@ TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) c
             };
             instructions =
             {
-                { 0x00, { &bytes.at( 0), 1 } },
-                { 0x01, { &bytes.at( 1), 2 } },
-                { 0x03, { &bytes.at( 3), 5 } },
-                { 0x08, { &bytes.at( 8), 2 } },
-                { 0x0A, { &bytes.at(10), 1 } },
-                { 0x0B, { &bytes.at(11), 3 } }
+                {  494, 0x00, 1 },
+                { 1301, 0x01, 2 },
+                {  264, 0x03, 5 },
+                {  215, 0x08, 2 },
+                {  223, 0x0A, 1 },
+                {    8, 0x0B, 3 }
             };
         }
         SECTION("Arbitrary start address")
@@ -52,8 +52,8 @@ TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) c
             };
             instructions =
             {
-                { 0x17, { &bytes.at(0), 1 } },
-                { 0x18, { &bytes.at(1), 1 } }
+                { 494, 0x17, 1 },
+                { 494, 0x18, 1 }
             };
         }
         SECTION("Invalid instructions")
@@ -66,8 +66,8 @@ TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) c
             };
             instructions =
             {
-                { 0x00, { &bytes.at(0), 1 } },
-                { 0x01, { &bytes.at(1), 1 } }
+                { 0, 0x00, 1 },
+                { 0, 0x01, 1 }
             };
         }
     }
@@ -80,17 +80,17 @@ TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) c
     {
         auto const disassembled_instruction = disassembler(&next_address, &next_code);
 
+        CHECK(disassembled_instruction.id == instruction.id);
         CHECK(disassembled_instruction.address == instruction.address);
-        CHECK(disassembled_instruction.code.data() == instruction.code.data());
-        CHECK(disassembled_instruction.code.size() == instruction.code.size());
+        CHECK(disassembled_instruction.size == instruction.size);
 
-        CHECK(next_address == instruction.address + instruction.code.size());
+        CHECK(next_address == instruction.address + instruction.size);
 
         auto const byte_pos = instruction.address - start_address;
 
         CHECK(next_code.data() ==
-            &bytes.at(byte_pos) + instruction.code.size()); // NOLINT [cppcoreguidelines-pro-bounds-pointer-arithmetic]
-        CHECK(next_code.size() == bytes.size() - byte_pos - instruction.code.size());
+            &bytes.at(byte_pos) + instruction.size); // NOLINT [cppcoreguidelines-pro-bounds-pointer-arithmetic]
+        CHECK(next_code.size() == bytes.size() - byte_pos - instruction.size);
     }
 }
 
@@ -98,8 +98,8 @@ TEST_CASE("Exceptions")
 {
     auto const architecture =
         GENERATE( // NOLINT
-            architecture::x86_32,
-            architecture::x86_64);
+            instruction_set_architecture::x86_32,
+            instruction_set_architecture::x86_64);
 
     disassembler const disassembler(architecture);
 

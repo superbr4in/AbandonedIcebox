@@ -1,8 +1,5 @@
 #pragma once
 
-#include <memory>
-
-#include <disassembler/architecture.hpp>
 #include <disassembler/instruction.hpp>
 
 /*!
@@ -10,7 +7,8 @@
  */
 class disassembler
 {
-    std::shared_ptr<void const> handle_;
+    struct handle;
+    std::shared_ptr<handle const> handle_;
 
 public:
 
@@ -18,7 +16,7 @@ public:
      *  Constructs a new disassembler.
      *  \param [in] architecture The instruction set architecture to interpret the machine code with.
      */
-    explicit disassembler(architecture architecture);
+    explicit disassembler(instruction_set_architecture architecture);
 
     /*!
      *  Iteratively disassembles one machine code instruction.
