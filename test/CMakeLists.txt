@@ -7,4 +7,5 @@ add_executable(test ${SOURCE_FILES})
 
 target_link_libraries(test PRIVATE catch2
     disassembler
+    loader
 )
