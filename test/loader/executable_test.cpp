@@ -1,10 +1,15 @@
+#include <fstream>
+
 #include <catch2/catch.hpp>
 #include <libgen.h>
 #include <loader/executable.hpp>
 
-std::string get_absolute_path(std::string const& file_name)
+void load_file(std::string const& name, std::ifstream& stream)
 {
-    return std::string(dirname(std::string(__FILE__).data())) + "/" + file_name;
+    stream.open(std::string(dirname(std::string(__FILE__).data())) + "/" + name);
+
+    if (!stream)
+        throw std::logic_error("Invalid file: " + name);
 }
 
 TEST_CASE("executable(std::string const&)")
@@ -57,11 +62,13 @@ TEST_CASE("executable(std::string const&)")
         };
     }
 
-    executable const executable(get_absolute_path(file_name));
+    std::ifstream stream;
+    load_file(file_name, stream);
+    auto const executable = executable::load_binary(stream);
 
-    CHECK(executable.architecture == architecture);
-    CHECK(executable.entry_point_address == entry_point_address);
-    CHECK(executable.memory_sections.size() == memory_section_infos.size());
+    CHECK(executable->architecture == architecture);
+    CHECK(executable->entry_point_address == entry_point_address);
+    CHECK(executable->memory_sections.size() == memory_section_infos.size());
     for (auto const& [address, size] : memory_section_infos)
-        CHECK(executable.memory_sections.at(address).size() == size);
+        CHECK(executable->memory_sections.at(address).size() == size);
 }
