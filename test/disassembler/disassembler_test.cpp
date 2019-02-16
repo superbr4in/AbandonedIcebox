@@ -35,12 +35,12 @@ TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) c
             };
             instructions =
             {
-                {  494, 0x00, 1 },
-                { 1301, 0x01, 2 },
-                {  264, 0x03, 5 },
-                {  215, 0x08, 2 },
-                {  223, 0x0A, 1 },
-                {    8, 0x0B, 3 }
+                { architecture,  494, 0x00, 1 },
+                { architecture, 1301, 0x01, 2 },
+                { architecture,  264, 0x03, 5 },
+                { architecture,  215, 0x08, 2 },
+                { architecture,  223, 0x0A, 1 },
+                { architecture,    8, 0x0B, 3 }
             };
         }
         SECTION("Arbitrary start address")
@@ -53,8 +53,8 @@ TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) c
             };
             instructions =
             {
-                { 494, 0x17, 1 },
-                { 494, 0x18, 1 }
+                { architecture, 494, 0x17, 1 },
+                { architecture, 494, 0x18, 1 }
             };
         }
     }
@@ -65,7 +65,7 @@ TEST_CASE("operator()(std::basic_string_view<std::byte>*, std::uint_fast64_t*) c
     std::basic_string_view<std::byte> next_code(bytes.data(), bytes.size());
     for (auto const& instruction : instructions)
     {
-        auto const disassembled_instruction = disassembler(&next_address, &next_code);
+        auto const disassembled_instruction = disassembler.iterate(&next_address, &next_code);
 
         CHECK(disassembled_instruction.id == instruction.id);
         CHECK(disassembled_instruction.address == instruction.address);
@@ -118,6 +118,6 @@ TEST_CASE("Exceptions")
             code = std::basic_string_view<std::byte>(bytes.data(), bytes.size());
         }
 
-        CHECK_THROWS(disassembler(&address, &code));
+        CHECK_THROWS(disassembler.iterate(&address, &code));
     }
 }

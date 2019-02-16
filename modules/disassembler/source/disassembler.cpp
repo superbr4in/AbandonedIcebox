@@ -21,38 +21,44 @@ struct disassembler::handle
 {
     csh cs;
 
-    explicit handle(instruction_set_architecture const architecture) :
-        cs()
-    {
-        cs_arch cs_architecture;
-        cs_mode cs_mode;
-        switch (architecture)
-        {
-        case instruction_set_architecture::x86_32:
-            cs_architecture = CS_ARCH_X86;
-            cs_mode = CS_MODE_32;
-            break;
-        case instruction_set_architecture::x86_64:
-            cs_architecture = CS_ARCH_X86;
-            cs_mode = CS_MODE_64;
-            break;
-        }
-
-        HANDLE_CS_ERROR(
-            cs_open(cs_architecture, cs_mode, &cs));
-        HANDLE_CS_ERROR(
-            cs_option(cs, CS_OPT_DETAIL, CS_OPT_ON));
-    }
-    ~handle()
-    {
-        cs_close(&cs);
-    }
+    instruction_set_architecture architecture;
 };
 
 disassembler::disassembler(instruction_set_architecture const architecture) :
-    handle_(std::make_shared<handle>(architecture)) { }
+    handle_(
+        new handle
+        {
+            .cs = 0,
+            .architecture = architecture
+        },
+        [](handle* const handle)
+        {
+            cs_close(&handle->cs);
+        })
+{
+    cs_arch cs_architecture;
+    cs_mode cs_mode;
+    switch (handle_->architecture)
+    {
+    case instruction_set_architecture::x86_32:
+        cs_architecture = CS_ARCH_X86;
+        cs_mode = CS_MODE_32;
+        break;
+    case instruction_set_architecture::x86_64:
+        cs_architecture = CS_ARCH_X86;
+        cs_mode = CS_MODE_64;
+        break;
+    default:
+        throw std::invalid_argument("Invalid architecture");
+    }
 
-instruction disassembler::operator()(std::uint_fast64_t* const address, std::basic_string_view<std::byte>* const code) const
+    HANDLE_CS_ERROR(
+        cs_open(cs_architecture, cs_mode, &handle_->cs));
+    HANDLE_CS_ERROR(
+        cs_option(handle_->cs, CS_OPT_DETAIL, CS_OPT_ON));
+}
+
+instruction disassembler::iterate(std::uint_fast64_t* const address, std::basic_string_view<std::byte>* const code) const
 {
     struct cs_insn_deleter
     {
@@ -85,10 +91,14 @@ instruction disassembler::operator()(std::uint_fast64_t* const address, std::bas
 
     return instruction
     {
+        .architecture = handle_->architecture,
+
         .id = cs_instruction->id,
 
         .address = cs_instruction->address,
-        .size = cs_instruction->size
+        .size = cs_instruction->size,
+
+        .operands = { } // TODO
     };
 }
 

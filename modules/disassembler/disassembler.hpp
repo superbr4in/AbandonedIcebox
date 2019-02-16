@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include <disassembler/instruction.hpp>
 
 /*!
@@ -8,7 +10,7 @@
 class disassembler
 {
     struct handle;
-    std::shared_ptr<handle const> handle_;
+    std::shared_ptr<handle> handle_;
 
 public:
 
@@ -28,5 +30,5 @@ public:
      *  \exception std::runtime_error    Encountered an invalid instruction.
      *  \returns A disassembled machine code instruction.
      */
-    instruction operator()(std::uint_fast64_t* address, std::basic_string_view<std::byte>* code) const;
+    instruction iterate(std::uint_fast64_t* address, std::basic_string_view<std::byte>* code) const;
 };
