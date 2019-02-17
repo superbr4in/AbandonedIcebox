@@ -2,7 +2,7 @@
 
 #include <catch2/catch.hpp>
 #include <libgen.h>
-#include <loader/executable.hpp>
+#include <loader/loader.hpp>
 
 void load_file(std::string const& name, std::ifstream& stream)
 {
@@ -18,7 +18,7 @@ TEST_CASE("executable(std::string const&)")
 
     instruction_set_architecture architecture;
     std::uint_fast64_t entry_point_address;
-    std::vector<std::pair<std::uint_fast64_t, std::size_t>> memory_section_infos;
+    std::vector<std::pair<std::uint_fast64_t, std::size_t>> data_info;
 
     SECTION("hello_world_32.exe")
     {
@@ -26,7 +26,7 @@ TEST_CASE("executable(std::string const&)")
 
         architecture = instruction_set_architecture::x86_32;
         entry_point_address = 0x44EE45;
-        memory_section_infos =
+        data_info =
         {
             { 0x400000,    860 },
             { 0x401000, 305869 },
@@ -46,7 +46,7 @@ TEST_CASE("executable(std::string const&)")
 
         architecture = instruction_set_architecture::x86_64;
         entry_point_address = 0x140061230;
-        memory_section_infos =
+        data_info =
         {
             { 0x140000000,    916 },
             { 0x140001000, 389206 },
@@ -62,13 +62,16 @@ TEST_CASE("executable(std::string const&)")
         };
     }
 
+    instruction_set_architecture loaded_architecture;
+    std::uint_fast64_t loaded_entry_point_address;
+    virtual_data loaded_data;
+
     std::ifstream stream;
     load_file(file_name, stream);
-    auto const executable = executable::load_binary(stream);
+    load_binary(stream, &loaded_architecture, &loaded_entry_point_address, &loaded_data);
 
-    CHECK(executable->architecture == architecture);
-    CHECK(executable->entry_point_address == entry_point_address);
-    CHECK(executable->memory_sections.size() == memory_section_infos.size());
-    for (auto const& [address, size] : memory_section_infos)
-        CHECK(executable->memory_sections.at(address).size() == size);
+    CHECK(loaded_architecture == architecture);
+    CHECK(loaded_entry_point_address == entry_point_address);
+    for (auto const& [address, size] : data_info)
+        CHECK(loaded_data[address].size() == size); // TODO virtual_data tests
 }

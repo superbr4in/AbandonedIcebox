@@ -1,14 +1,12 @@
-#include <iterator>
-
-#include <loader/executable.hpp>
-
 #include "helper.hpp"
+#include "pe_loader.hpp"
 
-pe_binary::pe_binary(std::istream& stream)
+void load_pe_binary(std::istream& stream, instruction_set_architecture* const architecture,
+    std::uint_fast64_t* const entry_point_address, virtual_data* const data)
 {
-    std::string const data(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char> { });
+    std::string const stream_data(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char> { });
 
-    auto it = data.begin();
+    auto it = stream_data.begin();
 
     auto const& [pe_offset] =
         regex_parse_values<1>("MZ[^]{58}([^]{4})", &it);
@@ -21,10 +19,10 @@ pe_binary::pe_binary(std::istream& stream)
     switch (machine_id)
     {
     case 332:
-        architecture = instruction_set_architecture::x86_32;
+        *architecture = instruction_set_architecture::x86_32;
         break;
     case 34404:
-        architecture = instruction_set_architecture::x86_64;
+        *architecture = instruction_set_architecture::x86_64;
         break;
     default:
         throw unknown_architecture();
@@ -47,10 +45,10 @@ pe_binary::pe_binary(std::istream& stream)
         regex_parse_values<1>("[^]{" + std::to_string(shift) + "}([^]{" + std::to_string(8 - shift) + "})", &it);
     it += optional_header_size - 24;
 
-    entry_point_address = base_address + relative_entry_point_address;
+    *entry_point_address = base_address + relative_entry_point_address;
 
-    memory_sections.emplace(base_address,
-        extract_bytes(data.begin(), pe_offset + 20 + optional_header_size + section_count * 40));
+    data->allocate(base_address,
+        extract_bytes(stream_data.begin(), pe_offset + 20 + optional_header_size + section_count * 40));
 
     for (std::size_t section_index = 0; section_index < section_count; ++section_index)
     {
@@ -58,17 +56,9 @@ pe_binary::pe_binary(std::istream& stream)
             regex_parse_values<4>("([^]{4})([^]{4})([^]{4})([^]{4})", &it);
         it += 24;
 
-        memory_sections.emplace(base_address + relative_section_address,
+        data->allocate(base_address + relative_section_address,
             miscellaneous > section_size
                 ? std::vector<std::byte>(miscellaneous, std::byte(0))
-                : extract_bytes(data.begin() + section_offset, section_size));
+                : extract_bytes(stream_data.begin() + section_offset, section_size));
     }
 }
-
-static_assert(std::is_destructible_v<pe_binary>);
-
-static_assert(std::is_move_constructible_v<pe_binary>);
-static_assert(std::is_move_assignable_v<pe_binary>);
-
-static_assert(std::is_copy_constructible_v<pe_binary>);
-static_assert(std::is_copy_assignable_v<pe_binary>);
