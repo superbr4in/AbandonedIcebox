@@ -1,6 +1,7 @@
 #pragma once
 
 #include <grev/execution.hpp>
+#include <grev/machine_environment.hpp>
 #include <grev/machine_program.hpp>
 
 namespace grev
@@ -9,18 +10,14 @@ namespace grev
     {
         machine_program const& program_;
 
-        std::unordered_map<std::uint32_t, std::vector<std::uint8_t>> patches_;
+        machine_environment environment_;
 
     public:
 
-        machine_process(machine_program const& program, std::unordered_map<std::uint32_t, std::vector<std::uint8_t>> patches);
+        machine_process(machine_program const& program, machine_environment environment);
 
         template <typename Disassembler>
         execution execute(Disassembler const& disassembler) const;
-
-    private:
-
-        execution_state memory_patch(std::unordered_set<z3::expression> const& dependencies) const;
     };
 }
 

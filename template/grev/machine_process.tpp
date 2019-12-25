@@ -35,7 +35,7 @@ namespace grev
                     }
 
                     auto const prev_jump = *jump;
-                    memory_patch(jump->dependencies()).resolve(&*jump);
+                    environment_.patch(program_, jump->dependencies()).resolve(&*jump);
                     if (*jump != prev_jump)
                         path->patch_jump(*jump);
 
@@ -58,7 +58,7 @@ namespace grev
                 {
                     if (auto import = program_.load_imported(*address))
                     {
-                        auto const import_execution = machine_process(std::move(*import), patches_).execute(disassembler);
+                        auto const import_execution = machine_process{std::move(*import), environment_}.execute(disassembler);
                         update_paths = std::move(import_execution.paths);
                     }
                     else break; // TODO Do not rely on missing code for import call detection.
@@ -104,7 +104,7 @@ namespace grev
 
                     path->state().resolve(&update_path.state());
 
-                    memory_patch(update_path.state().dependencies()).resolve(&update_path.state());
+                    environment_.patch(program_, update_path.state().dependencies()).resolve(&update_path.state());
 
                     path->state().resolve(&update_path.condition());
 

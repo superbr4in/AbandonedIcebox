@@ -64,7 +64,7 @@ int main(int const argument_count, char const* const* const raw_arguments)
 
     grev::reil_disassembler const disassembler(program.architecture());
 
-    grev::machine_process const process(program, std::move(patches));
+    grev::machine_process const process{program, grev::machine_environment{std::move(patches)}};
     for (auto const& [address, state] : process.execute(disassembler).import_calls)
     {
         std::cout << program.import_name(address) << std::endl;
