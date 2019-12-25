@@ -4,7 +4,7 @@
 
 #include <catch2/catch.hpp>
 
-#include <grev/machine_process.hpp>
+#include <grev/machine_processor.hpp>
 #include <grev-lift/reil_disassembler.hpp> // TODO Mockup
 #include <grev-load/pe_loader.hpp>
 
@@ -331,10 +331,13 @@ TEST_CASE("Path inspection", "[grev::machine_process]")
     }
     // TODO x86_64, etc.
 
-    grev::reil_disassembler const disassembler(architecture); // TODO Mockup
-    grev::machine_program const program(data, architecture);
+    grev::machine_processor const process{
+        grev::reil_disassembler{architecture}, // TODO Mockup
+        grev::machine_environment{{ }}};
 
-    auto const execution = grev::machine_process(program, grev::machine_environment{{ }}).execute(disassembler);
+    auto const execution = process.execute(
+        grev::machine_program{data, architecture});
+
     auto const actual_path_addresses = get_path_addresses(execution.paths);
 
     CHECK(matches(actual_path_addresses, expected_path_addresses));
@@ -343,12 +346,14 @@ TEST_CASE("Real path inspection", "[grev::machine_process]")
 {
     SECTION("x86_32")
     {
-        grev::reil_disassembler const disassembler(grev::machine_architecture::x86_32);
+        grev::reil_disassembler disassembler(grev::machine_architecture::x86_32);
 
         SECTION("helloworld_32.exe")
         {
-            auto const prog = grev::machine_program::load<grev::pe_loader>("/home/superbr4in/hello_world_32/hello_world_32.exe");
-            grev::machine_process const process{prog, grev::machine_environment{
+            auto const program =
+                grev::machine_program::load<grev::pe_loader>("/home/superbr4in/hello_world_32/hello_world_32.exe");
+
+            grev::machine_environment environment{
                 {
                     { 0x0040336C, std::vector<std::uint8_t> { 0x00, 0x00, 0x00, 0x00 } },
                     { 0x00403370, std::vector<std::uint8_t> { 0x00, 0x00, 0x13, 0x00 } },
@@ -358,8 +363,12 @@ TEST_CASE("Real path inspection", "[grev::machine_process]")
                     { 0x7FFE0018, std::vector<std::uint8_t> { 0xC1, 0xAD, 0xD5, 0x01 } },
                     { 0x7FFE001C, std::vector<std::uint8_t> { 0xC1, 0xAD, 0xD5, 0x01 } },
                     { 0x7FFE0300, std::vector<std::uint8_t> { 0xF0, 0xE4, 0x90, 0x7C } }
-                }}};
-            CHECK(matches(get_path_addresses(process.execute(disassembler).paths), std::vector<std::vector<std::uint32_t>>
+                }};
+
+            grev::machine_processor const processor{std::move(disassembler), std::move(environment)};
+
+            auto const execution = processor.execute(program);
+            CHECK(matches(get_path_addresses(execution.paths), std::vector<std::vector<std::uint32_t>>
             {
                 // Incomplete, tailored to current functionality TODO
                 {

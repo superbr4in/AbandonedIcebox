@@ -1,18 +1,23 @@
 #include <climits>
 
 #ifdef LINT
-#include <grev/machine_process.hpp>
+#include <grev/machine_processor.hpp>
 #endif
 
 namespace grev
 {
     template <typename Disassembler>
-    execution machine_process::execute(Disassembler const& disassembler) const
+    machine_processor<Disassembler>::machine_processor(Disassembler disassembler, machine_environment environment) :
+        disassembler_{std::move(disassembler)},
+        environment_{std::move(environment)} { }
+
+    template <typename Disassembler>
+    execution machine_processor<Disassembler>::execute(machine_program const& program) const
     {
         execution execution;
 
         auto& initial_path =
-            execution.paths.emplace_front(z3::expression(sizeof(std::uint32_t) * CHAR_BIT, program_.entry_point_address()));
+            execution.paths.emplace_front(z3::expression(sizeof(std::uint32_t) * CHAR_BIT, program.entry_point_address()));
 
         std::forward_list<execution_path*> pending_paths;
         pending_paths.push_front(&initial_path);
@@ -35,7 +40,7 @@ namespace grev
                     }
 
                     auto const prev_jump = *jump;
-                    environment_.patch(program_, jump->dependencies()).resolve(&*jump);
+                    environment_.patch(program, jump->dependencies()).resolve(&*jump);
                     if (*jump != prev_jump)
                         path->patch_jump(*jump);
 
@@ -46,7 +51,7 @@ namespace grev
                         if (address != *next_address)
                         {
                             address = std::move(*next_address);
-                            code = program_[*address];
+                            code = program[*address];
                         }
                     }
                     else break;
@@ -56,9 +61,9 @@ namespace grev
                 std::forward_list<execution_path> update_paths;
                 if (code.empty())
                 {
-                    if (auto import = program_.load_imported(*address))
+                    if (auto import = program.load_imported(*address))
                     {
-                        auto const import_execution = machine_process{std::move(*import), environment_}.execute(disassembler);
+                        auto const import_execution = execute(*import);
                         update_paths = std::move(import_execution.paths);
                     }
                     else break; // TODO Do not rely on missing code for import call detection.
@@ -87,7 +92,7 @@ namespace grev
                 else
                 {
                     // Disassemble next code
-                    update_paths = disassembler(&*address, &code);
+                    update_paths = disassembler_(&*address, &code);
                 }
 
                 std::forward_list<execution_path> resolved_update_paths;
@@ -104,7 +109,7 @@ namespace grev
 
                     path->state().resolve(&update_path.state());
 
-                    environment_.patch(program_, update_path.state().dependencies()).resolve(&update_path.state());
+                    environment_.patch(program, update_path.state().dependencies()).resolve(&update_path.state());
 
                     path->state().resolve(&update_path.condition());
 
@@ -141,5 +146,5 @@ namespace grev
 
 #ifdef LINT
 #include <grev-lift/reil_disassembler.hpp>
-template grev::execution grev::machine_process::execute(grev::reil_disassembler const&) const;
+template class grev::machine_processor<grev::reil_disassembler>;
 #endif

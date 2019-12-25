@@ -6,7 +6,7 @@
 
 #include <grev-lift/reil_disassembler.hpp>
 #include <grev-load/pe_loader.hpp>
-#include <grev/machine_process.hpp>
+#include <grev/machine_processor.hpp>
 
 int main(int const argument_count, char const* const* const raw_arguments)
 {
@@ -60,12 +60,13 @@ int main(int const argument_count, char const* const* const raw_arguments)
         patches.emplace(std::move(patch_address), std::move(patch_data));
     }
 
-    auto program = grev::machine_program::load<grev::pe_loader>(file_name);
+    auto const program = grev::machine_program::load<grev::pe_loader>(file_name);
 
-    grev::reil_disassembler const disassembler(program.architecture());
+    grev::machine_processor const processor{
+        grev::reil_disassembler{program.architecture()},
+        grev::machine_environment{std::move(patches)}};
 
-    grev::machine_process const process{program, grev::machine_environment{std::move(patches)}};
-    for (auto const& [address, state] : process.execute(disassembler).import_calls)
+    for (auto const& [address, state] : processor.execute(program).import_calls)
     {
         std::cout << program.import_name(address) << std::endl;
 
