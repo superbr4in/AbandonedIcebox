@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include <span>
+
 #include "header/pe_coff_header.hpp"
 #include "header/pe_dos_header.hpp"
 #include "header/pe_optional_header.hpp"
@@ -17,6 +19,6 @@ namespace grev
 
         std::vector<pe_section_header> sections;
 
-        static pe_header inspect(std::u8string_view data_view);
+        static pe_header inspect(std::span<std::uint8_t const> data_span);
     };
 }

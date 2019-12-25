@@ -10,7 +10,7 @@ TEST_CASE("Disassembling", "[grev::reil_disassembler]")
 
     auto const address = GENERATE(as<std::uint32_t>(),
         0, 1, 17, 1639);
-    std::u8string data;
+    std::vector<std::uint8_t> data;
 
     grev::execution_state initial_state;
 
@@ -105,7 +105,7 @@ TEST_CASE("Disassembling", "[grev::reil_disassembler]")
     grev::reil_disassembler const reil_disassembler(architecture);
 
     auto updated_address = address;
-    std::u8string_view updated_data{data};
+    std::span<std::uint8_t const> updated_data{data};
 
     auto const actual_execution = reil_disassembler(&updated_address, &updated_data);
 

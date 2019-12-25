@@ -4,11 +4,9 @@
 
 namespace grev
 {
-    template <typename T, typename CharT, typename Traits>
-    void reinterpret_copy(T* const destination, std::basic_string_view<CharT, Traits> const& source)
+    template <typename T>
+    void reinterpret_copy(T* const destination, std::span<std::uint8_t const> const& source)
     {
-        source.copy(
-            reinterpret_cast<CharT*>(destination),
-            sizeof(T));
+        *destination = *reinterpret_cast<T const*>(source.data());
     }
 }

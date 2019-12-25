@@ -8,7 +8,7 @@ namespace grev
 {
     machine_program::machine_program() = default;
 
-    machine_program::machine_program(std::u8string data, machine_architecture architecture) :
+    machine_program::machine_program(std::vector<std::uint8_t> data, machine_architecture architecture) :
         data_(std::move(data)),
         architecture_(std::move(architecture)),
         entry_point_address_(0)
@@ -25,10 +25,10 @@ namespace grev
         return entry_point_address_;
     }
 
-    std::u8string_view machine_program::operator[](std::uint32_t address) const
+    std::span<std::uint8_t const> machine_program::operator[](std::uint32_t const address) const
     {
         std::uint32_t segment_address;
-        std::u8string_view segment_data;
+        std::span<std::uint8_t const> segment_data;
 
         for (auto segment = memory_segments_.begin();; ++segment)
         {
@@ -41,7 +41,7 @@ namespace grev
                 break;
         }
 
-        return segment_data.substr(address - segment_address);
+        return segment_data.subspan(address - segment_address);
     }
 
     std::optional<machine_program> machine_program::load_imported(std::uint32_t const address) const
@@ -62,11 +62,11 @@ namespace grev
         return import_names_.at(address);
     }
 
-    std::u8string machine_program::load_data(std::string const& file_name)
+    std::vector<std::uint8_t> machine_program::load_data(std::string const& file_name)
     {
         std::ifstream file_stream(file_name, std::ios::ate);
 
-        std::u8string data(file_stream.tellg(), '\0');
+        std::vector<std::uint8_t> data(file_stream.tellg(), '\0');
 
         file_stream.seekg(0);
         file_stream.read(reinterpret_cast<char*>(data.data()), data.size());

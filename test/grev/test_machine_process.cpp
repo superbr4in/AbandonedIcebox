@@ -11,21 +11,21 @@
 #include "test.hpp"
 
 #define ADD_EAX_EBX 0x01, 0xD8
-#define ADD_EAX(v) 0x83, 0xC0, char8_t(v)
-#define CALL(v) 0xE8, char8_t{v}, 0x00, 0x00, 0x00
+#define ADD_EAX(v) 0x83, 0xC0, std::uint8_t(v)
+#define CALL(v) 0xE8, std::uint8_t{v}, 0x00, 0x00, 0x00
 #define CALL_DWORD_PTR_EAX 0xFF, 0x10
-#define CMP_DWORD_PTR_EAX(v) 0x83, 0x38, char8_t(v)
+#define CMP_DWORD_PTR_EAX(v) 0x83, 0x38, std::uint8_t(v)
 #define INT3 0xCC
-#define JE(v) 0x74, char8_t(v)
-#define JMP(v) 0xEB, char8_t(v)
+#define JE(v) 0x74, std::uint8_t(v)
+#define JMP(v) 0xEB, std::uint8_t(v)
 #define JMP_EAX 0xFF, 0xE0
-#define JNE(v) 0x75, char8_t(v)
-#define MOV_EAX(v) 0xB8, char8_t(v), 0x00, 0x00, 0x00
-#define MOV_EBX(v) 0xBB, char8_t(v), 0x00, 0x00, 0x00
-#define MOV_DWORD_PTR_ESP(s, v) 0xC7, 0x44, 0x24, char8_t(s), char8_t(v), 0x00, 0x00, 0x00
+#define JNE(v) 0x75, std::uint8_t(v)
+#define MOV_EAX(v) 0xB8, std::uint8_t(v), 0x00, 0x00, 0x00
+#define MOV_EBX(v) 0xBB, std::uint8_t(v), 0x00, 0x00, 0x00
+#define MOV_DWORD_PTR_ESP(s, v) 0xC7, 0x44, 0x24, std::uint8_t(s), std::uint8_t(v), 0x00, 0x00, 0x00
 #define NOP 0x90
 #define RET 0xC3
-#define RET_(v) 0xC2, char8_t(v), 0x00
+#define RET_(v) 0xC2, std::uint8_t(v), 0x00
 
 std::vector<std::vector<std::uint32_t>> get_path_addresses(std::forward_list<grev::execution_path> const& paths)
 {
@@ -39,7 +39,7 @@ std::vector<std::vector<std::uint32_t>> get_path_addresses(std::forward_list<gre
 TEST_CASE("Path inspection", "[grev::machine_process]")
 {
     grev::machine_architecture architecture;
-    std::u8string data;
+    std::vector<std::uint8_t> data;
 
     std::vector<std::vector<std::uint32_t>> expected_path_addresses;
 
@@ -50,11 +50,11 @@ TEST_CASE("Path inspection", "[grev::machine_process]")
         SECTION("A")
         {
             data = GENERATE(
-                std::u8string
+                std::vector<std::uint8_t>
                 {
                     RET
                 },
-                std::u8string
+                std::vector<std::uint8_t>
                 {
                     RET,
                     INT3
@@ -350,14 +350,14 @@ TEST_CASE("Real path inspection", "[grev::machine_process]")
             auto const prog = grev::machine_program::load<grev::pe_loader>("/home/superbr4in/hello_world_32/hello_world_32.exe");
             grev::machine_process const process(prog,
                 {
-                    { 0x0040336C, std::u8string(u8"\x00\x00\x00\x00", 4) },
-                    { 0x00403370, std::u8string(u8"\x00\x00\x13\x00", 4) },
-                    { 0x0040337C, std::u8string(u8"\x01\x00\x00\x00", 4) },
-                    { 0x00403380, std::u8string(u8"\x00\x00\x00\x00", 4) },
-                    { 0x7FFE0014, std::u8string(u8"\x3C\x31\x72\xED", 4) },
-                    { 0x7FFE0018, std::u8string(u8"\xC1\xAD\xD5\x01", 4) },
-                    { 0x7FFE001C, std::u8string(u8"\xC1\xAD\xD5\x01", 4) },
-                    { 0x7FFE0300, std::u8string(u8"\xF0\xE4\x90\x7C", 4) }
+                    { 0x0040336C, std::vector<std::uint8_t> { 0x00, 0x00, 0x00, 0x00 } },
+                    { 0x00403370, std::vector<std::uint8_t> { 0x00, 0x00, 0x13, 0x00 } },
+                    { 0x0040337C, std::vector<std::uint8_t> { 0x01, 0x00, 0x00, 0x00 } },
+                    { 0x00403380, std::vector<std::uint8_t> { 0x00, 0x00, 0x00, 0x00 } },
+                    { 0x7FFE0014, std::vector<std::uint8_t> { 0x3C, 0x31, 0x72, 0xED } },
+                    { 0x7FFE0018, std::vector<std::uint8_t> { 0xC1, 0xAD, 0xD5, 0x01 } },
+                    { 0x7FFE001C, std::vector<std::uint8_t> { 0xC1, 0xAD, 0xD5, 0x01 } },
+                    { 0x7FFE0300, std::vector<std::uint8_t> { 0xF0, 0xE4, 0x90, 0x7C } }
                 });
             CHECK(matches(get_path_addresses(process.execute(disassembler).paths), std::vector<std::vector<std::uint32_t>>
             {

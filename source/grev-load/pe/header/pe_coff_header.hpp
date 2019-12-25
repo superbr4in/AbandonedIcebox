@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string_view>
+#include <span>
 
 namespace grev
 {
@@ -10,6 +10,6 @@ namespace grev
         std::uint16_t section_count;
         std::uint16_t optional_header_size;
 
-        static pe_coff_header inspect(std::u8string_view* data_view);
+        static pe_coff_header inspect(std::span<std::uint8_t const>* data_span);
     };
 }

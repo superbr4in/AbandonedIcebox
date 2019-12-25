@@ -1,5 +1,6 @@
 #include <climits>
 #include <functional>
+#include <string>
 
 #include <libopenreil.h>
 
@@ -35,7 +36,7 @@ namespace grev
         {
         case A_REG:
         case A_TEMP:
-            return z3::expression(get_width(argument), std::begin(argument.name));
+            return z3::expression(get_width(argument), std::string{std::begin(argument.name)});
         default:
             throw std::logic_error("Unexpected type");
         }
@@ -129,7 +130,7 @@ namespace grev
     }
 
     std::forward_list<execution_path>
-        reil_disassembler::operator()(std::uint32_t* const address, std::u8string_view* const code) const
+        reil_disassembler::operator()(std::uint32_t* const address, std::span<std::uint8_t const>* const code) const
     {
         update_paths_.emplace_front(z3::expression(sizeof(std::uint32_t) * CHAR_BIT, *address));
 
@@ -137,7 +138,7 @@ namespace grev
             code->begin(),
             std::next(
                 code->begin(),
-                std::min(code->size(), std::size_t{MAX_INST_LEN})));
+                std::min(code->size(), long{MAX_INST_LEN})));
 
         instructions_.clear();
         reil_translate_insn(handle_, *address, narrowed_code.data(), narrowed_code.size());
@@ -145,7 +146,7 @@ namespace grev
         auto const size = instructions_.front().raw_info.size;
 
         *address += size;
-        code->remove_prefix(size);
+        *code = code->subspan(size);
 
         auto step_value = *address;
         for (auto const& instruction : instructions_)

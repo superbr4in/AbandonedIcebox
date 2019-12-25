@@ -22,7 +22,7 @@ namespace grev
             pending_paths.pop_front();
 
             // Follow the current path as far as possible (depth-first search)
-            for (auto [address, code] = std::pair<std::optional<std::uint32_t>, std::u8string_view> { };;)
+            for (auto [address, code] = std::pair<std::optional<std::uint32_t>, std::span<std::uint8_t const>> { };;)
             {
                 // Proceed if jump is available
                 if (auto jump = path->jump())

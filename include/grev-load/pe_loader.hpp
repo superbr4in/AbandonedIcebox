@@ -4,6 +4,8 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <span>
+#include <unordered_map>
 
 #include <grev/import_descriptor.hpp>
 #include <grev/machine_architecture.hpp>
@@ -19,7 +21,7 @@ namespace grev
 
     public:
 
-        explicit pe_loader(std::u8string_view data);
+        explicit pe_loader(std::span<std::uint8_t const> data);
         ~pe_loader();
 
         machine_architecture architecture() const;
@@ -32,10 +34,10 @@ namespace grev
         std::optional<std::uint32_t> imports_address() const;
 
         std::unordered_map<std::string, std::uint32_t>
-            export_map(std::function<std::u8string_view (std::uint32_t)> const& func) const;
+            export_map(std::function<std::span<std::uint8_t const> (std::uint32_t)> const& func) const;
 
-        std::forward_list<import_descriptor> import_descriptors(std::u8string_view data) const;
-        std::forward_list<std::uint32_t> import_origins(std::u8string_view data) const;
-        machine_import import(std::u8string_view const& data) const;
+        std::forward_list<import_descriptor> import_descriptors(std::span<std::uint8_t const> data) const;
+        std::forward_list<std::uint32_t> import_origins(std::span<std::uint8_t const> data) const;
+        machine_import import(std::span<std::uint8_t const> const& data) const;
     };
 }

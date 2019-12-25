@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string_view>
+#include <span>
 
 namespace grev
 {
@@ -8,6 +8,6 @@ namespace grev
     {
         std::uint32_t pe_offset;
 
-        static pe_dos_header inspect(std::u8string_view* data_view);
+        static pe_dos_header inspect(std::span<std::uint8_t const>* data_span);
     };
 }

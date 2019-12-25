@@ -39,7 +39,7 @@ int main(int const argument_count, char const* const* const raw_arguments)
         return 1;
     }
 
-    std::unordered_map<std::uint32_t, std::u8string> patches;
+    std::unordered_map<std::uint32_t, std::vector<std::uint8_t>> patches;
     for (auto patch_string = std::next(arguments.begin(), 2); patch_string != arguments.end(); ++patch_string)
     {
         std::istringstream patch_stream{*patch_string};
@@ -47,14 +47,14 @@ int main(int const argument_count, char const* const* const raw_arguments)
         std::uint32_t patch_address;
         patch_stream >> std::hex >> patch_address;
 
-        std::u8string patch_data;
+        std::vector<std::uint8_t> patch_data;
         while (!patch_stream.eof() && !patch_stream.fail())
         {
             int patch_value;
             patch_stream.ignore();
             patch_stream >> std::hex >> patch_value;
 
-            patch_data += static_cast<char8_t>(patch_value);
+            patch_data.push_back(static_cast<std::uint8_t>(patch_value));
         }
 
         patches.emplace(std::move(patch_address), std::move(patch_data));
@@ -80,7 +80,7 @@ int main(int const argument_count, char const* const* const raw_arguments)
             {
                 if (auto data = program[*value_value]; !data.empty())
                 {
-                    data = data.substr(0, 30);
+                    data = data.first(30);
                     std::cout << " \"" << reinterpret_cast<char const*>(data.data()) << "\"";
                 }
             }

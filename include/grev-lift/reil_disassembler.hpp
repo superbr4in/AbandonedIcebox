@@ -1,6 +1,7 @@
 #pragma once
 
 #include <list>
+#include <span>
 
 #include <grev/execution.hpp>
 #include <grev/machine_architecture.hpp>
@@ -30,7 +31,7 @@ namespace grev
 
         reil_disassembler& operator=(reil_disassembler other) noexcept;
 
-        std::forward_list<execution_path> operator()(std::uint32_t* address, std::u8string_view* code) const;
+        std::forward_list<execution_path> operator()(std::uint32_t* address, std::span<std::uint8_t const>* code) const;
 
     private:
 

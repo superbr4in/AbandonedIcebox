@@ -1,6 +1,6 @@
 #pragma once
 
-#include <string_view>
+#include <span>
 
 namespace grev
 {
@@ -11,6 +11,6 @@ namespace grev
         std::uint32_t relative_exports_address;
         std::uint32_t relative_imports_address;
 
-        static pe_optional_header inspect(std::u8string_view* data_view);
+        static pe_optional_header inspect(std::span<std::uint8_t const>* data_span);
     };
 }

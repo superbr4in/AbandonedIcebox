@@ -9,11 +9,11 @@ namespace grev
     {
         machine_program const& program_;
 
-        std::unordered_map<std::uint32_t, std::u8string> patches_;
+        std::unordered_map<std::uint32_t, std::vector<std::uint8_t>> patches_;
 
     public:
 
-        machine_process(machine_program const& program, std::unordered_map<std::uint32_t, std::u8string> patches);
+        machine_process(machine_program const& program, std::unordered_map<std::uint32_t, std::vector<std::uint8_t>> patches);
 
         template <typename Disassembler>
         execution execute(Disassembler const& disassembler) const;

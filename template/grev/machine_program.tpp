@@ -22,8 +22,8 @@ namespace grev
         program.base_address_ = loader.base_address();
         program.entry_point_address_ = loader.entry_point_address();
 
-        for (std::u8string_view const data_view{program.data_}; auto const& [address, bounds] : loader.memory_segments())
-            program.memory_segments_.emplace(address, data_view.substr(bounds.first, bounds.second));
+        for (std::span<std::uint8_t const> data_span(program.data_.data(), program.data_.size()); auto const& [address, bounds] : loader.memory_segments())
+            program.memory_segments_.emplace(address, data_span.subspan(bounds.first, bounds.second));
 
         program.export_map_ = loader.export_map(std::bind(&machine_program::operator[], &program, std::placeholders::_1));
 

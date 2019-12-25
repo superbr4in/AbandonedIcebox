@@ -4,7 +4,7 @@
 
 namespace grev
 {
-    machine_process::machine_process(machine_program const& program, std::unordered_map<std::uint32_t, std::u8string> patches) :
+    machine_process::machine_process(machine_program const& program, std::unordered_map<std::uint32_t, std::vector<std::uint8_t>> patches) :
         program_(program),
         patches_(std::move(patches)) { }
 
@@ -28,7 +28,7 @@ namespace grev
             auto const value_width = dependency.width();
             auto const value_width_bytes = (value_width - 1) / CHAR_BIT + 1; // TODO Possible underflow (?)
 
-            std::u8string_view data;
+            std::span<std::uint8_t const> data;
             if (auto const patch_entry = patches_.find(*address); patch_entry != patches_.end())
                 data = patch_entry->second;
             else
@@ -38,8 +38,8 @@ namespace grev
                 continue;
 
             std::uint32_t value { };
-            for (data.remove_suffix(data.size() - value_width_bytes); !data.empty(); data.remove_suffix(1)) // Little endian
-                value = (value << std::uint8_t{CHAR_BIT}) + data.back();
+            for (data = data.first(value_width_bytes); !data.empty(); data = data.first(data.size() - 1)) // Little endian
+                value = (value << std::uint8_t{CHAR_BIT}) + *std::prev(data.end());
 
             memory_patch.define(dependency, z3::expression(value_width, value));
         }

@@ -4,7 +4,7 @@
 
 namespace grev
 {
-    pe_loader::pe_loader(std::u8string_view data) :
+    pe_loader::pe_loader(std::span<std::uint8_t const> data) :
         header_(std::make_unique<pe_header>(pe_header::inspect(std::move(data)))) { }
     pe_loader::~pe_loader() = default;
 
@@ -54,7 +54,7 @@ namespace grev
     }
 
     std::unordered_map<std::string, std::uint32_t>
-        pe_loader::export_map(std::function<std::u8string_view (std::uint32_t)> const& func) const
+        pe_loader::export_map(std::function<std::span<std::uint8_t const> (std::uint32_t)> const& func) const
     {
         auto const relative_exports_address = header_->optional.relative_exports_address;
 
@@ -89,14 +89,14 @@ namespace grev
         for (auto i = 0; i < ed.numberOfNames; ++i)
         {
             auto const name_address = *reinterpret_cast<std::uint32_t const*>(name_address_data.data());
-            name_address_data.remove_prefix(sizeof(std::uint32_t));
+            name_address_data = name_address_data.subspan(sizeof(std::uint32_t));
 
             auto const name_ordinal = *reinterpret_cast<std::uint16_t const*>(name_ordinal_data.data());
-            name_ordinal_data.remove_prefix(sizeof(std::uint16_t));
+            name_ordinal_data = name_ordinal_data.subspan(sizeof(std::uint16_t));
 
             std::string name{reinterpret_cast<char const*>(func(header_->optional.base_address + name_address).data())};
             auto const function_address =
-                *reinterpret_cast<std::uint32_t const*>(function_address_data.substr(name_ordinal * sizeof(std::uint32_t)).data());
+                *reinterpret_cast<std::uint32_t const*>(function_address_data.subspan(name_ordinal * sizeof(std::uint32_t)).data());
 
             export_map.emplace(std::move(name), header_->optional.base_address + function_address);
         }
@@ -104,7 +104,7 @@ namespace grev
         return export_map;
     }
 
-    std::forward_list<import_descriptor> pe_loader::import_descriptors(std::u8string_view data) const
+    std::forward_list<import_descriptor> pe_loader::import_descriptors(std::span<std::uint8_t const> data) const
     {
         struct pe_import_descriptor
         {
@@ -115,38 +115,47 @@ namespace grev
             std::uint32_t first_thunk;
         };
 
-        static std::u8string const delimiter(sizeof(pe_import_descriptor), '\0');
-
         std::forward_list<import_descriptor> import_descriptors;
-        for (; !data.starts_with(delimiter); data.remove_prefix(sizeof(pe_import_descriptor)))
+        while (true)
         {
             auto const id = *reinterpret_cast<pe_import_descriptor const*>(data.data());
+
+            if (id.name == 0)
+                break;
+
             import_descriptors.push_front(
             {
                 .name_address = header_->optional.base_address + id.name,
                 .origin_address = header_->optional.base_address + id.original_first_thunk,
                 .reference_address = header_->optional.base_address + id.first_thunk
             });
+
+            data = data.subspan(sizeof(pe_import_descriptor));
         }
 
         return import_descriptors;
     }
-    std::forward_list<std::uint32_t> pe_loader::import_origins(std::u8string_view data) const
+    std::forward_list<std::uint32_t> pe_loader::import_origins(std::span<std::uint8_t const> data) const
     {
-        static std::u8string const delimiter(sizeof(std::uint32_t), '\0');
-
         std::forward_list<std::uint32_t> import_origins;
-        for (; !data.starts_with(delimiter); data.remove_prefix(sizeof(std::uint32_t)))
-            import_origins.push_front(header_->optional.base_address + *reinterpret_cast<std::uint32_t const*>(data.data()));
+        while (true)
+        {
+            auto const origin = *reinterpret_cast<std::uint32_t const*>(data.data());
+
+            if (origin == 0)
+                break;
+
+            import_origins.push_front(header_->optional.base_address + origin);
+        }
 
         return import_origins;
     }
-    machine_import pe_loader::import(std::u8string_view const& data) const
+    machine_import pe_loader::import(std::span<std::uint8_t const> const& data) const
     {
         return
         {
             .address = *reinterpret_cast<std::uint16_t const*>(data.data()),
-            .name = reinterpret_cast<char const*>(data.substr(sizeof(std::uint16_t)).data())
+            .name = reinterpret_cast<char const*>(data.subspan(sizeof(std::uint16_t)).data())
         };
     }
 }
